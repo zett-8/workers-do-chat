@@ -15,10 +15,10 @@ export default function ChatRoom() {
   const user = useGetOrCreateUser()
 
   useEffect(() => {
-    // const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    // const ws = new WebSocket(`${protocol}//${new URL(window.location.href).host}/api/ws/${roomId}`)
-
-    const ws = new WebSocket(`ws://localhost:8787/api/ws/${roomId}`)
+    const dev = window.location.hostname === 'localhost'
+    const protocol = dev ? 'ws ' : 'wss'
+    const host = dev ? 'localhost:8787' : new URL(window.location.href).host
+    const ws = new WebSocket(`${protocol}://${host}/api/ws/${roomId}`)
 
     socketRef.current = ws
 
