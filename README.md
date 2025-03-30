@@ -1,6 +1,7 @@
 ![Image](https://github.com/user-attachments/assets/3e3c763f-24c8-47b7-966d-8421eee19b2b)
 
 # ⚡️ Realtime Chat app 
+Demo: [https://workers-do-chat.zett.workers.dev](https://workers-do-chat.zett.workers.dev)
 
 ## Getting Started
 
