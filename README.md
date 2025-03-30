@@ -1,32 +1,6 @@
-![Convertio Image](https://github.com/zett-8/remixed-remix/assets/33055097/096c0cfc-e680-4c48-9d79-a2aa53e77ebb)
+![Image](https://github.com/user-attachments/assets/3e3c763f-24c8-47b7-966d-8421eee19b2b)
 
-# 💿 Remixed React Router
-
-Remixed React Router is your web app's stellar launchpad improved from the original React Router [template](https://github.com/remix-run/react-router-templates/tree/main/cloudflare-d1).  
-A production-ready template designed for seamless deployment on Cloudflare Workers.  
-📖 See the [Hono](https://hono.dev/) and the [React Router docs](https://reactrouter.com/) for details on supported features.
-
-## Features
-
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
-
-## Setups
-
-- Hono🔥
-- Cloudflare Workers with D1
-- User Authentication with Clerk
-- Tailwind
-- Drizzle
-- Zod
-- ESLint with flat config
-- Vite
-- Typescript
+# ⚡️ Realtime Chat app 
 
 ## Getting Started
 
@@ -43,29 +17,25 @@ pnpm install
 Generate types:
 
 ```bash
-pnpm run typegen
+pnpm typegen
 ```
 
-Run an initial database migration:
+To run Server:
 
 ```bash
-pnpm run db:migrate
+pnpm build
+pnpm start
 ```
 
-Start the development server with HMR:
+Your application will be available at `http://localhost:8787`.
 
-```bash
-pnpm run dev
-```
-
-To run Wrangler:
+To run Frontend separately:
 
 ```sh
-npm run build
-npm run start
+pnpm dev
 ```
 
-Your application will be available at `http://localhost:5173`.
+Your frontend will be available at `http://localhost:5173`.
 
 ## Building for Production
 
