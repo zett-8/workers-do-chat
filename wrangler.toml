@@ -1,0 +1,20 @@
+workers_dev = true
+name = "workers-do-chat"
+compatibility_date = "2024-11-18"
+compatibility_flags = ["nodejs_compat"]
+main = "./worker.ts"
+assets = { directory = "./build/client/" }
+
+[vars]
+ROOM_NAME = "default"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["ChatRoom"]
+
+[[durable_objects.bindings]]
+name = "CHAT_ROOM"
+class_name = "ChatRoom"
+
+[observability.logs]
+enabled = true
