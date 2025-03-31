@@ -1,5 +1,5 @@
 {
-  "name": "remixed-react-router",
+  "name": "wikitraverze",
   "private": true,
   "type": "module",
   "scripts": {
@@ -21,6 +21,7 @@
     "hono": "^4.7.4",
     "hono-react-router-adapter": "^0.6.2",
     "isbot": "^5.1.17",
+    "linkedom": "^0.18.9",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router": "^7.1.3"

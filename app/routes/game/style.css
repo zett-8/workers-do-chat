@@ -1,0 +1,40 @@
+:root {
+    --left-width: 50%;
+  }
+  
+  .game-wrapper {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  .pane.left {
+    width: var(--left-width);
+  }
+  
+  .pane.right {
+    flex: 1;
+  }
+  
+  .pane iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+  }
+  
+  .divider {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: var(--left-width);
+    width: 6px;
+    margin-left: -3px;
+    background: linear-gradient(to bottom, #ff9800, #ffc107);
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+    cursor: col-resize;
+    z-index: 10;
+  }
+  
