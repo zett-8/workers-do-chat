@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react'
 
-export const useGetOrCreateUser = () => {
-  const [user, setUser] = useState('')
+export const useGetOrCreateUserId = () => {
+  const [userId, setUserId] = useState('')
 
   useEffect(() => {
-    let savedUser = window.localStorage.getItem('chat-user')
-    if (!savedUser) {
+    let savedUserId = window.localStorage.getItem('wikitraverze-userid')
+    if (!savedUserId) {
       const randomName = 'Anonymous' + Math.floor(Math.random() * 10000)
-      savedUser = randomName
-      localStorage.setItem('chat-user', randomName)
+      savedUserId = randomName
+      localStorage.setItem('wikitraverze-userid', randomName)
     }
-    setUser(savedUser)
+    setUserId(savedUserId)
   }, [])
 
-  return user
+  return userId
 }

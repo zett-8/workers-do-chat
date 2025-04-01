@@ -1,14 +1,17 @@
-export class ChatRoom {
+export type Ping = { type: 'scroll' | 'traverse' | 'status'; player: string; data: string }
+
+export class GameRoom {
   state: DurableObjectState
-  messages: { user: string; message: string }[] = []
+  pings: Ping[] = []
+  gameHistory: Ping[] = []
   connections: Map<string, WebSocket> = new Map()
 
   constructor(state: DurableObjectState) {
     this.state = state
 
     this.state.blockConcurrencyWhile(async () => {
-      const stored = await this.state.storage.get<ChatRoom['messages']>('messages')
-      this.messages = stored ?? []
+      const stored = await this.state.storage.get<GameRoom['gameHistory']>('gameHistory')
+      this.gameHistory = stored ?? [{ type: 'status', player: 'system', data: 'game started' }]
     })
   }
 
@@ -19,21 +22,24 @@ export class ChatRoom {
       server.accept()
       this.connections.set(id, server)
 
-      // Send existing messages
-      for (const msg of this.messages) {
+      // Send existing game history
+      for (const msg of this.gameHistory) {
         server.send(JSON.stringify(msg))
       }
 
       server.addEventListener('message', async (e) => {
         try {
-          const { user, message } = JSON.parse(e.data)
-          const entry = { user, message }
+          const { type, player, data } = JSON.parse(e.data) as Ping
+          const entry = { type, player, data }
 
-          this.messages.push(entry)
-          await this.state.storage.put('messages', this.messages)
+          if (type !== 'scroll') {
+            this.gameHistory.push(entry)
+          }
+
+          await this.state.storage.put('gameHistory', this.gameHistory)
           this.broadcast(JSON.stringify(entry))
         } catch {
-          console.warn('invalid message format', e.data)
+          console.warn('invalid ping format', e.data)
         }
       })
 
@@ -46,7 +52,7 @@ export class ChatRoom {
               await new Promise((r) => setTimeout(r, 5000))
               if (this.connections.size === 0) {
                 // Delete message history if no connections
-                await this.state.storage.delete('messages')
+                await this.state.storage.delete('gameHistory')
               }
             })()
           )

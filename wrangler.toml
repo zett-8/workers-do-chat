@@ -8,13 +8,17 @@ assets = { directory = "./build/client/" }
 [vars]
 ROOM_NAME = "default"
 
+[[kv_namespaces]]
+binding = "PAGE_CACHE"
+id = "15291d2a183349a7b166fa501c4e63e4"
+
 [[migrations]]
 tag = "v1"
-new_classes = ["ChatRoom"]
+new_classes = ["GameRoom"]
 
 [[durable_objects.bindings]]
-name = "CHAT_ROOM"
-class_name = "ChatRoom"
+name = "GAME_ROOM"
+class_name = "GameRoom"
 
 [observability.logs]
 enabled = true

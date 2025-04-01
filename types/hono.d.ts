@@ -1,6 +1,6 @@
 declare global {
   type HonoENV = {
-    Bindings: { CHAT_ROOM: DurableObjectNamespace }
+    Bindings: { GAME_ROOM: DurableObjectNamespace; PAGE_CACHE: KVNamespace }
     Variables: { _ }
   }
 }
