@@ -169,7 +169,15 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
           {!iframeVisible && <div className="absolute inset-0 bg-gray-100 pointer-events-none" />}
         </div>
 
-        <div onMouseDown={handleMouseDown} className="w-1.5 cursor-col-resize bg-gray-300 hover:bg-gray-500 z-10" />
+        <div
+          role="slider"
+          aria-valuenow={0}
+          tabIndex={0}
+          onKeyDown={() => null}
+          onMouseDown={handleMouseDown}
+          className="w-1.5 cursor-col-resize bg-gray-300 hover:bg-gray-500 z-10"
+          aria-orientation="vertical"
+        />
 
         <div ref={rightRef} className="h-full relative" style={{ width: `${100 - leftWidth}%` }}>
           <iframe
