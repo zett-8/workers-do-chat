@@ -20,21 +20,6 @@ app.get('/api/proxy', async (c) => {
     return c.text('Invalid URL', 400)
   }
 
-  // const match = url.match(/^https:\/\/[^.]+\.wikipedia\.org\/wiki\/([^?#]+)/)
-  // if (!match) {
-  //   return c.text('Invalid URL', 400)
-  // }
-  // const cacheKey = match[1]
-  // const cachedPage = await c.env.PAGE_CACHE.get(cacheKey)
-  // if (cachedPage) {
-  //   return new Response(cachedPage, {
-  //     headers: {
-  //       'content-type': 'text/html; charset=UTF-8',
-  //       'access-control-allow-origin': '*',
-  //     },
-  //   })
-  // }
-
   try {
     const res = await fetch(url)
     const html = await res.text()
@@ -45,7 +30,7 @@ app.get('/api/proxy', async (c) => {
     wikiCSS.setAttribute('rel', 'stylesheet')
     wikiCSS.setAttribute(
       'href',
-      'https://en.wikipedia.org/w/load.php?debug=false&lang=ja&modules=site.styles&only=styles&skin=vector'
+      'https://ja.wikipedia.org/w/load.php?debug=false&lang=ja&modules=site.styles&only=styles&skin=vector'
     )
     head?.appendChild(wikiCSS)
     const base = document.createElement('base')
@@ -59,40 +44,18 @@ app.get('/api/proxy', async (c) => {
       a.setAttribute(
         'onclick',
         `
-        console.log('📤 sending postMessage', { type: 'traverse', url: '${href}' });
-        window.parent.postMessage({ type: 'traverse', url: '${href}' }, '*');
+        console.log('📤 sending postMessage', { type: 'pm_traverse', url: '${href}' });
+        window.parent.postMessage({ type: 'pm_traverse', url: '${href}' }, '*');
         return false;
       `
       )
     }
 
     const script = document.createElement('script')
-    // script.innerHTML = `window.history.pushState({}, '', window.location.href);`
-    // script.innerHTML = `
-    //   window.history.pushState(null, '', window.location.href);
 
-    //   window.onInternalLinkClick = function(href) {
-    //     history.pushState({}, '', href);
-    //     // window.dispatchEvent(new Event('popstate'));
-    //   };
-
-    //   const originalPushState = history.pushState;
-    //   history.pushState = function () {
-    //     originalPushState.apply(this, arguments);
-    //     window.parent.postMessage({ type: 'traverse', url: location.href }, '*');
-    //   };
-
-    //   window.addEventListener('popstate', () => {
-    //     window.parent.postMessage({ type: 'traverse', url: location.href }, '*');
-    //   });
-    // `
     document.body.appendChild(script)
 
     const modifiedHTML = '<!DOCTYPE html>' + document.documentElement.outerHTML
-
-    // await c.env.PAGE_CACHE.put(cacheKey, modifiedHTML, {
-    //   expirationTtl: 60 * 60 * 24 * 30, // 30 days
-    // })
 
     return new Response(modifiedHTML, {
       headers: {

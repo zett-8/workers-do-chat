@@ -1,4 +1,4 @@
-export type Ping = { type: 'scroll' | 'traverse' | 'status'; player: string; data: string }
+export type Ping = { type: 'scroll' | 'traversed' | 'status'; player: string; data: string }
 
 export class GameRoom {
   state: DurableObjectState
