@@ -1,9 +1,23 @@
-export type Ping = { type: 'scroll' | 'traversed' | 'status'; player: string; data: string }
+import { getRandomWikiPage } from './utils/wikipage'
+
+export type Protocol = {
+  type: 'scrolled' | 'traversed' | 'action' | 'startUrl' | 'goalUrl' | 'winner' | 'command'
+  player: string
+  data: string
+  date: number
+}
+
+type GameHistory = {
+  type: 'traversed' | 'action' | 'startUrl' | 'goalUrl' | 'winner' | 'command'
+  player: string
+  data: string
+  date: number
+}
 
 export class GameRoom {
   state: DurableObjectState
-  pings: Ping[] = []
-  gameHistory: Ping[] = []
+  players: string[] = ['testuser']
+  gameHistory: GameHistory[] = []
   connections: Map<string, WebSocket> = new Map()
 
   constructor(state: DurableObjectState) {
@@ -11,8 +25,19 @@ export class GameRoom {
 
     this.state.blockConcurrencyWhile(async () => {
       const stored = await this.state.storage.get<GameRoom['gameHistory']>('gameHistory')
-      this.gameHistory = stored ?? [{ type: 'status', player: 'system', data: 'game started' }]
+      this.gameHistory = stored ?? []
     })
+  }
+
+  // return the latest date ping of the type
+  retrieveLatestPing(type: GameHistory['type']) {
+    const pings = this.gameHistory.filter((e) => e.type === type)
+    return pings.sort((a, b) => a.date - b.date)[pings.length - 1]
+  }
+
+  getOpponent(player: string) {
+    const opponent = this.players.find((p) => p !== player)
+    return opponent
   }
 
   async fetch(req: Request) {
@@ -29,15 +54,99 @@ export class GameRoom {
 
       server.addEventListener('message', async (e) => {
         try {
-          const { type, player, data } = JSON.parse(e.data) as Ping
-          const entry = { type, player, data }
+          const { type, player, data, date } = JSON.parse(e.data) as Protocol
 
-          if (type !== 'scroll') {
+          if (type !== 'scrolled') {
+            const entry = { type, player, data, date }
             this.gameHistory.push(entry)
           }
 
+          if (type === 'action' && data === 'hello') {
+            if (!this.players.includes(player)) this.players.push(player)
+            return
+          }
+
+          if (type === 'action' && data === 'retireGame') {
+            console.log('retireGame ----------- ', player)
+            const opponent = this.getOpponent(player)
+            console.log('opponent ----------- ', opponent)
+            if (opponent) {
+              const winnerEntry = {
+                type: 'winner' as GameHistory['type'],
+                player: opponent,
+                data: 'win',
+                date: Date.now(),
+              }
+              this.gameHistory.push(winnerEntry)
+              await this.state.storage.put('gameHistory', this.gameHistory)
+              this.broadcast(JSON.stringify(winnerEntry))
+            }
+            return
+          }
+
+          if (type === 'action' && data === 'randomGame') {
+            const [page1, page2] = await getRandomWikiPage()
+            const now = Date.now()
+
+            const entry1 = {
+              type: 'startUrl' as GameHistory['type'],
+              player: 'system',
+              data: 'https://ja.wikipedia.org/wiki/' + encodeURIComponent(page1.title),
+              date: now,
+            }
+            const entry2 = {
+              type: 'goalUrl' as GameHistory['type'],
+              player: 'system',
+              data: 'https://ja.wikipedia.org/wiki/' + encodeURIComponent(page2.title),
+              date: now,
+            }
+            const entry3 = {
+              type: 'traversed' as GameHistory['type'],
+              player: this.players[0],
+              data: 'https://ja.wikipedia.org/wiki/' + encodeURIComponent(page1.title),
+              date: now + 1,
+            }
+            const entry4 = {
+              type: 'traversed' as GameHistory['type'],
+              player: this.players[1],
+              data: 'https://ja.wikipedia.org/wiki/' + encodeURIComponent(page1.title),
+              date: now + 1,
+            }
+
+            const entry5 = {
+              type: 'command' as GameHistory['type'],
+              player: 'system',
+              data: 'startGame',
+              date: now,
+            }
+            this.gameHistory.push(entry1)
+            this.gameHistory.push(entry2)
+            this.gameHistory.push(entry3)
+            this.gameHistory.push(entry4)
+            this.gameHistory.push(entry5)
+            this.broadcast(JSON.stringify(entry1))
+            this.broadcast(JSON.stringify(entry2))
+            this.broadcast(JSON.stringify(entry3))
+            this.broadcast(JSON.stringify(entry4))
+            this.broadcast(JSON.stringify(entry5))
+            await this.state.storage.put('gameHistory', this.gameHistory)
+            return
+          }
+
           await this.state.storage.put('gameHistory', this.gameHistory)
+          const entry = { type, player, data, date }
           this.broadcast(JSON.stringify(entry))
+
+          if (type === 'traversed') {
+            const goalUrl = this.retrieveLatestPing('goalUrl')
+            if (data === goalUrl.data) {
+              const winnerEntry = { type: 'winner' as GameHistory['type'], player, data: 'win', date: Date.now() }
+              // await this.state.storage.delete('gameHistory')
+              this.gameHistory.push(winnerEntry)
+              await this.state.storage.put('gameHistory', this.gameHistory)
+              this.broadcast(JSON.stringify(winnerEntry))
+            }
+          }
         } catch {
           console.warn('invalid ping format', e.data)
         }

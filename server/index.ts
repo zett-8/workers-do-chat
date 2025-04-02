@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { parseHTML } from 'linkedom'
 import { setMiddlewares } from './middlewares'
+import { getRandomWikiPage } from './utils/wikipage'
 
 const app = new Hono<HonoENV>()
 
@@ -12,6 +13,11 @@ app.get('/api/ws/:gameId', async (c) => {
   const id = c.env.GAME_ROOM.idFromName(c.req.param('gameId'))
   const stub = c.env.GAME_ROOM.get(id)
   return stub.fetch(c.req.raw)
+})
+
+app.get('/api/random', async (c) => {
+  const [page1, page2] = await getRandomWikiPage()
+  return c.json([page1, page2])
 })
 
 app.get('/api/proxy', async (c) => {
