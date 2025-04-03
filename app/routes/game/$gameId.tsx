@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { data, useParams } from 'react-router'
+import { GlobalDialog } from '@app/components/globalDialog'
 import { getWsUrl } from '@app/utils/api.client'
 import { createResizeHandler } from '@app/utils/resizeUtils'
 import { getOrCreateUserId } from '@app/utils/userId.server'
@@ -33,6 +34,7 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
   const [startPage, setStartPage] = useState<PageData | null>(null)
   const [goalPage, setGoalPage] = useState<PageData | null>(null)
   const [opponentPage, setOpponentPage] = useState<PageData | null>(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
 
   const [onGame, setOnGame] = useState(false)
   const onGameRef = useRef(onGame)
@@ -92,12 +94,12 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
         if (!rightIframeRef.current || !leftIframeRef.current) return
 
         if (player === 'system') {
-          leftIframeRef.current.src = `/api/proxy?url=${encodeURIComponent(data)}`
-          rightIframeRef.current.src = `/api/proxy?url=${encodeURIComponent(data)}`
+          leftIframeRef.current.src = `/api/proxy?url=${data}`
+          rightIframeRef.current.src = `/api/proxy?url=${data}`
         } else if (player === userId) {
-          leftIframeRef.current.src = `/api/proxy?url=${encodeURIComponent(data)}`
+          leftIframeRef.current.src = `/api/proxy?url=${data}`
         } else {
-          rightIframeRef.current.src = `/api/proxy?url=${encodeURIComponent(data)}`
+          rightIframeRef.current.src = `/api/proxy?url=${data}`
         }
       }
 
@@ -177,89 +179,99 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
 
   useEffect(() => {
     if (!hasLoadedOnce.current && leftIframeRef.current && rightIframeRef.current) {
-      leftIframeRef.current.src = `/api/proxy?url=${encodeURIComponent(START_PAGE.url)}`
-      rightIframeRef.current.src = `/api/proxy?url=${encodeURIComponent(START_PAGE.url)}`
+      leftIframeRef.current.src = `/api/proxy?url=${START_PAGE.url}`
+      rightIframeRef.current.src = `/api/proxy?url=${START_PAGE.url}`
       hasLoadedOnce.current = true
 
       console.log('set initial src')
     }
   }, [])
 
-  const startRandomGame = async () => {
-    socketRef.current?.send(JSON.stringify({ type: 'action', player: userId, data: 'randomGame', date: Date.now() }))
-  }
-
   const retireGame = async () => {
     socketRef.current?.send(JSON.stringify({ type: 'action', player: userId, data: 'retireGame', date: Date.now() }))
   }
 
   return (
-    <div className="w-full h-screen flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="w-full h-14 bg-black text-white flex items-center px-4 justify-between text-sm z-20">
-        <div className="font-bold">Wikitraverze</div>
-        <div className="flex gap-4 items-center">
-          {onGame && startPage?.url && goalPage?.url && (
-            <>
-              <span>
-                Route: {decodeURIComponent(startPage.url.split('/wiki/')[1])} ➡️{' '}
-                {decodeURIComponent(goalPage.url.split('/wiki/')[1])}
-              </span>
-              <span>Opponent: {decodeURIComponent(opponentPage?.url?.split('/wiki/')[1] ?? '')}</span>
-            </>
-          )}
-        </div>
-        <div>
-          {onGame ? (
-            <button className="bg-white text-black px-3 py-1 rounded hover:bg-gray-200 transition" onClick={retireGame}>
-              RETIRE💀
-            </button>
-          ) : (
-            <button
-              className="bg-white text-black px-3 py-1 rounded hover:bg-gray-200 transition"
-              onClick={startRandomGame}
-            >
-              New Game🎓
-            </button>
-          )}
-        </div>
-      </header>
+    <>
+      <div className="w-full h-screen flex flex-col overflow-hidden">
+        {/* Header */}
+        <header className="w-full h-14 bg-black text-white flex items-center px-4 justify-between text-sm z-20">
+          <div className="font-bold">Wikitraverze</div>
+          <div className="flex gap-4 items-center">
+            {onGame && startPage?.url && goalPage?.url && (
+              <>
+                <span>
+                  Route: {decodeURIComponent(startPage.url.split('/wiki/')[1]).replaceAll('_', ' ')} ➡️{' '}
+                  {decodeURIComponent(goalPage.url.split('/wiki/')[1]).replaceAll('_', ' ')}
+                </span>
+                <span>
+                  Opponent: {decodeURIComponent(opponentPage?.url?.split('/wiki/')[1] ?? '').replaceAll('_', ' ')}
+                </span>
+              </>
+            )}
+          </div>
+          <div>
+            {onGame ? (
+              <button
+                className="bg-white text-black px-3 py-1 rounded hover:bg-gray-200 transition"
+                onClick={retireGame}
+              >
+                RETIRE💀
+              </button>
+            ) : (
+              <button
+                className="bg-white text-black px-3 py-1 rounded hover:bg-gray-200 transition"
+                onClick={() => setIsDialogOpen(true)}
+              >
+                New Game🎓
+              </button>
+            )}
+          </div>
+        </header>
 
-      {/* Game Area */}
-      <div ref={containerRef} className="flex-1 flex relative select-none overflow-hidden">
-        <div ref={leftRef} className="h-full relative" style={{ width: `${leftWidth}%` }}>
-          <iframe
-            // sandbox="allow-scripts allow-same-origin"
-            ref={leftIframeRef}
-            className="w-full h-full border-none"
-            title="You"
-            style={{ visibility: iframeVisible ? 'visible' : 'hidden' }}
+        {/* Game Area */}
+        <div ref={containerRef} className="flex-1 flex relative select-none overflow-hidden">
+          <div ref={leftRef} className="h-full relative" style={{ width: `${leftWidth}%` }}>
+            <iframe
+              // sandbox="allow-scripts allow-same-origin"
+              ref={leftIframeRef}
+              className="w-full h-full border-none"
+              title="You"
+              style={{ visibility: iframeVisible ? 'visible' : 'hidden' }}
+            />
+            {!iframeVisible && <div className="absolute inset-0 bg-gray-100 pointer-events-none" />}
+          </div>
+
+          <div
+            role="slider"
+            aria-valuenow={0}
+            tabIndex={0}
+            onKeyDown={() => null}
+            onMouseDown={handleMouseDown}
+            className="w-1.5 cursor-col-resize bg-gray-300 hover:bg-gray-500 z-10"
+            aria-orientation="vertical"
           />
-          {!iframeVisible && <div className="absolute inset-0 bg-gray-100 pointer-events-none" />}
-        </div>
 
-        <div
-          role="slider"
-          aria-valuenow={0}
-          tabIndex={0}
-          onKeyDown={() => null}
-          onMouseDown={handleMouseDown}
-          className="w-1.5 cursor-col-resize bg-gray-300 hover:bg-gray-500 z-10"
-          aria-orientation="vertical"
-        />
-
-        <div ref={rightRef} className="h-full relative" style={{ width: `${100 - leftWidth}%` }}>
-          <iframe
-            // sandbox="allow-scripts allow-same-origin"
-            ref={rightIframeRef}
-            className="w-full h-full border-none pointer-events-none"
-            title="Opponent"
-            style={{ visibility: iframeVisible ? 'visible' : 'hidden' }}
-          />
-          {!iframeVisible && <div className="absolute inset-0 bg-gray-100 pointer-events-none" />}
+          <div ref={rightRef} className="h-full relative" style={{ width: `${100 - leftWidth}%` }}>
+            <iframe
+              // sandbox="allow-scripts allow-same-origin"
+              ref={rightIframeRef}
+              className="w-full h-full border-none pointer-events-none"
+              title="Opponent"
+              style={{ visibility: iframeVisible ? 'visible' : 'hidden' }}
+            />
+            {!iframeVisible && <div className="absolute inset-0 bg-gray-100 pointer-events-none" />}
+          </div>
         </div>
       </div>
-    </div>
+      <GlobalDialog
+        isOpen={isDialogOpen}
+        closeDialog={() => setIsDialogOpen(false)}
+        socketRef={socketRef}
+        userId={userId}
+        wikiOrigin={wikiOrigin}
+      />
+    </>
   )
 }
 

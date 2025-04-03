@@ -20,6 +20,22 @@ app.get('/api/random', async (c) => {
   return c.json([page1, page2])
 })
 
+app.get('/api/page/check/:pageTitle', async (c) => {
+  try {
+    const pageTitle = c.req.param('pageTitle')
+    const res = await fetch(
+      `https://ja.wikipedia.org/w/api.php?action=query&titles=${pageTitle.replaceAll(' ', '_')}&format=json`
+    )
+    const json = (await res.json()) as { query: { pages: { [key: string]: { pageid: unknown } } } }
+    console.log(json)
+    const pageId = Object.keys(json.query.pages)[0]
+    return c.json({ result: pageId !== '-1' })
+  } catch (e) {
+    console.error(e)
+    return c.json({ result: false })
+  }
+})
+
 app.get('/api/proxy', async (c) => {
   const url = c.req.query('url')
   if (!url || !url.startsWith('https://')) {

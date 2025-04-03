@@ -1,11 +1,21 @@
 import { getRandomWikiPage } from './utils/wikipage'
 
-export type Protocol = {
-  type: 'scrolled' | 'traversed' | 'action' | 'startUrl' | 'goalUrl' | 'winner' | 'command'
-  player: string
-  data: string
-  date: number
-}
+export type Protocol =
+  | {
+      type: 'scrolled' | 'traversed' | 'action' | 'startUrl' | 'goalUrl' | 'winner' | 'command'
+      player: string
+      data: string
+      date: number
+    }
+  | {
+      type: 'wantToStartGame'
+      player: string
+      data: {
+        startPage: string
+        goalPage: string
+      }
+      date: number
+    }
 
 type GameHistory = {
   type: 'traversed' | 'action' | 'startUrl' | 'goalUrl' | 'winner' | 'command'
@@ -56,7 +66,7 @@ export class GameRoom {
         try {
           const { type, player, data, date } = JSON.parse(e.data) as Protocol
 
-          if (type !== 'scrolled') {
+          if (type !== 'scrolled' && type !== 'wantToStartGame') {
             const entry = { type, player, data, date }
             this.gameHistory.push(entry)
           }
@@ -84,32 +94,31 @@ export class GameRoom {
             return
           }
 
-          if (type === 'action' && data === 'randomGame') {
-            const [page1, page2] = await getRandomWikiPage()
+          if (type === 'wantToStartGame') {
             const now = Date.now()
-
+            const { startPage, goalPage } = data
             const entry1 = {
               type: 'startUrl' as GameHistory['type'],
               player: 'system',
-              data: 'https://ja.wikipedia.org/wiki/' + encodeURIComponent(page1.title),
+              data: startPage,
               date: now,
             }
             const entry2 = {
               type: 'goalUrl' as GameHistory['type'],
               player: 'system',
-              data: 'https://ja.wikipedia.org/wiki/' + encodeURIComponent(page2.title),
+              data: goalPage,
               date: now,
             }
             const entry3 = {
               type: 'traversed' as GameHistory['type'],
               player: this.players[0],
-              data: 'https://ja.wikipedia.org/wiki/' + encodeURIComponent(page1.title),
+              data: startPage,
               date: now + 1,
             }
             const entry4 = {
               type: 'traversed' as GameHistory['type'],
               player: this.players[1],
-              data: 'https://ja.wikipedia.org/wiki/' + encodeURIComponent(page1.title),
+              data: startPage,
               date: now + 1,
             }
 
