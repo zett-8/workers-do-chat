@@ -1,15 +1,18 @@
 import { useRef, useState, useEffect } from 'react'
-import { data, useParams } from 'react-router'
-import { GlobalDialog } from '@app/components/globalDialog'
+import { data, useParams, useSearchParams } from 'react-router'
+import { GlobalDialog, IframeDialog, GameDialog } from '@app/components/globalDialog'
 import { getWsUrl } from '@app/utils/api.client'
 import { createResizeHandler } from '@app/utils/resizeUtils'
 import { getOrCreateUserId } from '@app/utils/userId.server'
 import type { Protocol } from '../../../server/gameRoom'
 import type { Route } from './+types/$gameId'
 
-const START_PAGE = { url: 'https://ja.wikipedia.org/wiki/哲学', date: 0 }
-const GOAL_PAGE = { url: 'https://ja.wikipedia.org/wiki/芸術', date: 0 }
 type PageData = { url: string; date: number }
+
+const PLAY_MODE = {
+  vs: 'vs',
+  solo: 'solo',
+}
 
 export const loader = async ({ request }: Route.LoaderArgs) => {
   const { userId, headers } = await getOrCreateUserId(request)
@@ -19,6 +22,8 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
 const GamePage = ({ loaderData }: Route.ComponentProps) => {
   const { userId, wikiOrigin } = loaderData
   const { gameId } = useParams()
+  const [searchParams] = useSearchParams()
+  const playMode = PLAY_MODE[searchParams.get('playMode') as keyof typeof PLAY_MODE] || 'vs'
   const containerRef = useRef<HTMLDivElement>(null)
   const leftRef = useRef<HTMLDivElement>(null)
   const rightRef = useRef<HTMLDivElement>(null)
@@ -31,10 +36,18 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
   const socketRef = useRef<WebSocket | null>(null)
   const lastScrollSent = useRef(0)
 
+  const [connection, setConnection] = useState<'loading' | 'error' | 'connected' | 'disconnected'>('loading')
+  const [roomIsReady, setRoomIsReady] = useState(false)
+
   const [startPage, setStartPage] = useState<PageData | null>(null)
   const [goalPage, setGoalPage] = useState<PageData | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [opponentPage, setOpponentPage] = useState<PageData | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [popupUrl, setPopupUrl] = useState<string | null>(null)
+
+  const [gameResult, setGameResult] = useState<boolean | null>(null)
 
   const [onGame, setOnGame] = useState(false)
   const onGameRef = useRef(onGame)
@@ -57,10 +70,17 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
     socketRef.current = ws
 
     ws.onopen = () => {
+      socketRef.current?.send(
+        JSON.stringify({ type: 'hello', player: userId, data: { playMode: playMode }, date: Date.now() })
+      )
       console.log('WebSocket opened')
-      socketRef.current?.send(JSON.stringify({ type: 'action', player: userId, data: 'hello', date: Date.now() }))
+      setConnection('connected')
     }
-    ws.onerror = (event) => console.error('WebSocket error', event)
+
+    ws.onerror = (event) => {
+      console.error('WebSocket error', event)
+      setConnection('error')
+    }
 
     ws.onmessage = (event) => {
       const ping = JSON.parse(event.data) as Protocol
@@ -72,10 +92,14 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
         if (Date.now() - ping.date > 3000) return
 
         if (player === userId) {
-          alert('You win!')
+          setGameResult(true)
         } else {
-          alert('You lose!')
+          setGameResult(false)
         }
+      }
+
+      if (type === 'status' && data === 'roomIsReady') {
+        setRoomIsReady(true)
       }
 
       if (type === 'command' && data === 'startGame') {
@@ -100,6 +124,7 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
           leftIframeRef.current.src = `/api/proxy?url=${data}`
         } else {
           rightIframeRef.current.src = `/api/proxy?url=${data}`
+          setOpponentPage({ url: data, date: ping.date })
         }
       }
 
@@ -115,7 +140,10 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
       }
     }
 
-    ws.onclose = () => console.log('WebSocket closed')
+    ws.onclose = () => {
+      console.log('WebSocket closed')
+      setConnection('disconnected')
+    }
     return () => ws.close()
   }, [gameId, userId])
 
@@ -179,8 +207,8 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
 
   useEffect(() => {
     if (!hasLoadedOnce.current && leftIframeRef.current && rightIframeRef.current) {
-      leftIframeRef.current.src = `/api/proxy?url=${START_PAGE.url}`
-      rightIframeRef.current.src = `/api/proxy?url=${START_PAGE.url}`
+      // leftIframeRef.current.src = `/api/proxy?url=${START_PAGE.url}`
+      // rightIframeRef.current.src = `/api/proxy?url=${START_PAGE.url}`
       hasLoadedOnce.current = true
 
       console.log('set initial src')
@@ -190,6 +218,31 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
   const retireGame = async () => {
     socketRef.current?.send(JSON.stringify({ type: 'action', player: userId, data: 'retireGame', date: Date.now() }))
   }
+
+  // =============================================================================================================================
+  // ================================================ ↓ Waiting for WS connection ================================================
+  if (connection === 'loading') {
+    return (
+      <div className="w-full h-screen flex items-center justify-center bg-black text-white">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className="text-xl font-medium animate-pulse">Connecting to game server...</div>
+        </div>
+      </div>
+    )
+  }
+  // ================================================ ↑ Waiting for WS connection ↑ ===============================================
+
+  // ==============================================================================================================================
+  // ================================================ ↓ Wainting for an opponent ↓ ================================================
+  if (!roomIsReady) {
+    return (
+      <div className="w-full h-screen flex items-center justify-center bg-black text-white">
+        <div className="text-xl font-medium animate-pulse">Waiting for an opponent...</div>
+      </div>
+    )
+  }
+  // ================================================ ↑ Wainting for an opponent ↑ ================================================
 
   return (
     <>
@@ -201,12 +254,23 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
             {onGame && startPage?.url && goalPage?.url && (
               <>
                 <span>
-                  Route: {decodeURIComponent(startPage.url.split('/wiki/')[1]).replaceAll('_', ' ')} ➡️{' '}
-                  {decodeURIComponent(goalPage.url.split('/wiki/')[1]).replaceAll('_', ' ')}
+                  Route:{' '}
+                  <button className="hover:underline" onClick={() => setPopupUrl(startPage.url)}>
+                    {decodeURIComponent(startPage.url.split('/wiki/')[1]).replaceAll('_', ' ')}
+                  </button>{' '}
+                  ➡️{' '}
+                  <button className="hover:underline" onClick={() => setPopupUrl(goalPage.url)}>
+                    {decodeURIComponent(goalPage.url.split('/wiki/')[1]).replaceAll('_', ' ')}
+                  </button>
                 </span>
-                <span>
-                  Opponent: {decodeURIComponent(opponentPage?.url?.split('/wiki/')[1] ?? '').replaceAll('_', ' ')}
-                </span>
+                {opponentPage?.url && (
+                  <span>
+                    Opponent:{' '}
+                    <button className="hover:underline" onClick={() => setPopupUrl(opponentPage.url)}>
+                      {decodeURIComponent(opponentPage.url.split('/wiki/')[1]).replaceAll('_', ' ')}
+                    </button>
+                  </span>
+                )}
               </>
             )}
           </div>
@@ -229,7 +293,6 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
           </div>
         </header>
 
-        {/* Game Area */}
         <div ref={containerRef} className="flex-1 flex relative select-none overflow-hidden">
           <div ref={leftRef} className="h-full relative" style={{ width: `${leftWidth}%` }}>
             <iframe
@@ -271,6 +334,8 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
         userId={userId}
         wikiOrigin={wikiOrigin}
       />
+      <IframeDialog closeDialog={() => setPopupUrl(null)} url={popupUrl} />
+      <GameDialog closeDialog={() => setGameResult(null)} gameResult={gameResult} />
     </>
   )
 }

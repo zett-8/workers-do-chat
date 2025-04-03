@@ -1,5 +1,3 @@
-import { getRandomWikiPage } from './utils/wikipage'
-
 export type Protocol =
   | {
       type: 'scrolled' | 'traversed' | 'action' | 'startUrl' | 'goalUrl' | 'winner' | 'command'
@@ -16,6 +14,8 @@ export type Protocol =
       }
       date: number
     }
+  | { type: 'hello'; player: string; data: { playMode: 'vs' | 'solo' }; date: number }
+  | { type: 'status'; player: 'system'; data: 'roomIsReady'; date: number }
 
 type GameHistory = {
   type: 'traversed' | 'action' | 'startUrl' | 'goalUrl' | 'winner' | 'command'
@@ -26,7 +26,7 @@ type GameHistory = {
 
 export class GameRoom {
   state: DurableObjectState
-  players: string[] = ['testuser']
+  players: string[] = []
   gameHistory: GameHistory[] = []
   connections: Map<string, WebSocket> = new Map()
 
@@ -66,13 +66,27 @@ export class GameRoom {
         try {
           const { type, player, data, date } = JSON.parse(e.data) as Protocol
 
-          if (type !== 'scrolled' && type !== 'wantToStartGame') {
+          if (type !== 'scrolled' && type !== 'wantToStartGame' && type !== 'hello') {
             const entry = { type, player, data, date }
             this.gameHistory.push(entry)
           }
 
-          if (type === 'action' && data === 'hello') {
+          if (type === 'hello') {
             if (!this.players.includes(player)) this.players.push(player)
+            if (data.playMode === 'solo') {
+              if (!this.players.includes('cpu')) this.players.push('cpu')
+            }
+
+            if (this.players.length === 2) {
+              const entry = {
+                type: 'status' as GameHistory['type'],
+                player: 'system',
+                data: 'roomIsReady',
+                date: Date.now(),
+              }
+              this.gameHistory.push(entry)
+              this.broadcast(JSON.stringify(entry))
+            }
             return
           }
 

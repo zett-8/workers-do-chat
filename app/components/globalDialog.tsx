@@ -163,3 +163,63 @@ export function GlobalDialog({ isOpen, closeDialog, children, socketRef, userId,
     </div>
   )
 }
+
+export const IframeDialog = ({ closeDialog, url }: { closeDialog: () => void; url: string | null }) => {
+  if (!url) return null
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex min-h-screen items-center justify-center p-4 text-center">
+        <div
+          className="fixed inset-0 bg-black/70 transition-opacity"
+          onClick={closeDialog}
+          onKeyDown={(e) => e.key === 'Enter' && closeDialog()}
+          role="button"
+          tabIndex={0}
+          aria-label="Close dialog"
+        />
+        <iframe className="max-w-[90vw] w-full h-[90vh] border-none z-50 drop-shadow-md" src={url} title="popup" />
+      </div>
+    </div>
+  )
+}
+
+export const GameDialog = ({ closeDialog, gameResult }: { closeDialog: () => void; gameResult: boolean | null }) => {
+  if (gameResult === null) return null
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex min-h-screen items-center justify-center p-4 text-center">
+        <div
+          className="fixed inset-0 bg-black/70 transition-opacity"
+          onClick={closeDialog}
+          onKeyDown={(e) => e.key === 'Enter' && closeDialog()}
+          role="button"
+          tabIndex={0}
+        />
+
+        <div className="relative transform overflow-hidden rounded-2xl p-8 shadow-2xl transition-all w-full max-w-md">
+          <div
+            className={`text-center p-8 rounded-xl ${
+              gameResult
+                ? 'bg-gradient-to-br from-green-400 to-emerald-600'
+                : 'bg-gradient-to-br from-red-400 to-rose-600'
+            }`}
+          >
+            <div className="text-6xl mb-4">{gameResult ? '🏆' : '😢'}</div>
+            <h2 className="text-3xl font-bold text-white mb-2">{gameResult ? 'You Win!' : 'You Lose!'}</h2>
+            <p className="text-white/90 mb-6">
+              {gameResult ? 'Congratulations on your victory!' : 'Better luck next time!'}
+            </p>
+            <button
+              onClick={closeDialog}
+              className="px-6 py-3 bg-white/90 hover:bg-white text-gray-900 font-medium rounded-lg transition-all"
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
