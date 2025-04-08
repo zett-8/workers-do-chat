@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react'
-import { data, useParams, useSearchParams } from 'react-router'
+import { data, Link, useParams, useSearchParams } from 'react-router'
 import { GlobalDialog, IframeDialog, GameDialog } from '@app/components/globalDialog'
 import { getWsUrl } from '@app/utils/api.client'
 import { createResizeHandler } from '@app/utils/resizeUtils'
@@ -35,6 +35,7 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
   const hasLoadedOnce = useRef(false)
   const socketRef = useRef<WebSocket | null>(null)
   const lastScrollSent = useRef(0)
+  const [showOpponentPanel, setShowOpponentPanel] = useState(true)
 
   const [connection, setConnection] = useState<'loading' | 'error' | 'connected' | 'disconnected'>('loading')
   const [roomIsReady, setRoomIsReady] = useState(false)
@@ -216,7 +217,9 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
   }, [])
 
   const retireGame = async () => {
-    socketRef.current?.send(JSON.stringify({ type: 'action', player: userId, data: 'retireGame', date: Date.now() }))
+    if (confirm('Are you sure you want to give up?')) {
+      socketRef.current?.send(JSON.stringify({ type: 'action', player: userId, data: 'retireGame', date: Date.now() }))
+    }
   }
 
   // =============================================================================================================================
@@ -248,43 +251,53 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
     <>
       <div className="w-full h-screen flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="w-full h-14 bg-black text-white flex items-center px-4 justify-between text-sm z-20">
-          <div className="font-bold">Wikitraverze</div>
-          <div className="flex gap-4 items-center">
+        <header className="w-full h-14 bg-gray-900 text-white flex items-center px-4 justify-between text-sm z-20 shadow-md">
+          <div className="font-bold">
+            <Link to="/">Wikitraverze</Link>
+          </div>
+          <div className="flex gap-4 items-center text-lg">
             {onGame && startPage?.url && goalPage?.url && (
               <>
                 <span>
-                  Route:{' '}
                   <button className="hover:underline" onClick={() => setPopupUrl(startPage.url)}>
-                    {decodeURIComponent(startPage.url.split('/wiki/')[1]).replaceAll('_', ' ')}
+                    🚩{decodeURIComponent(startPage.url.split('/wiki/')[1]).replaceAll('_', ' ')}
                   </button>{' '}
-                  ➡️{' '}
+                  → → →{' '}
                   <button className="hover:underline" onClick={() => setPopupUrl(goalPage.url)}>
-                    {decodeURIComponent(goalPage.url.split('/wiki/')[1]).replaceAll('_', ' ')}
+                    {decodeURIComponent(goalPage.url.split('/wiki/')[1]).replaceAll('_', ' ')} 🏁
                   </button>
                 </span>
-                {opponentPage?.url && (
+                {/* {opponentPage?.url && (
                   <span>
                     Opponent:{' '}
                     <button className="hover:underline" onClick={() => setPopupUrl(opponentPage.url)}>
                       {decodeURIComponent(opponentPage.url.split('/wiki/')[1]).replaceAll('_', ' ')}
                     </button>
                   </span>
-                )}
+                )} */}
               </>
             )}
           </div>
           <div>
+            <button
+              className="bg-white text-black px-4 py-2 rounded-md hover:bg-gray-200 transition mr-2"
+              onClick={() => {
+                setLeftWidth(showOpponentPanel ? 100 : 50)
+                setShowOpponentPanel(!showOpponentPanel)
+              }}
+            >
+              {showOpponentPanel ? '📺' : '📺✂️📺'}
+            </button>
             {onGame ? (
               <button
-                className="bg-white text-black px-3 py-1 rounded hover:bg-gray-200 transition"
+                className="bg-white text-black px-4 py-2 rounded-md hover:bg-gray-200 transition"
                 onClick={retireGame}
               >
-                RETIRE💀
+                GIVE UP💀
               </button>
             ) : (
               <button
-                className="bg-white text-black px-3 py-1 rounded hover:bg-gray-200 transition"
+                className="bg-white text-black px-4 py-2 rounded-md hover:bg-gray-200 transition"
                 onClick={() => setIsDialogOpen(true)}
               >
                 New Game🎓
@@ -311,11 +324,15 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
             tabIndex={0}
             onKeyDown={() => null}
             onMouseDown={handleMouseDown}
-            className="w-1.5 cursor-col-resize bg-gray-300 hover:bg-gray-500 z-10"
+            className={`w-1.5 cursor-col-resize bg-gray-300 hover:bg-gray-500 z-10 ${showOpponentPanel ? 'block' : 'hidden'}`}
             aria-orientation="vertical"
           />
 
-          <div ref={rightRef} className="h-full relative" style={{ width: `${100 - leftWidth}%` }}>
+          <div
+            ref={rightRef}
+            className={`h-full relative ${showOpponentPanel ? 'block' : 'hidden'}`}
+            style={{ width: `${100 - leftWidth}%` }}
+          >
             <iframe
               // sandbox="allow-scripts allow-same-origin"
               ref={rightIframeRef}

@@ -62,15 +62,46 @@ app.get('/api/proxy', async (c) => {
     const aTags = document.querySelectorAll('a')
     for (const a of aTags) {
       const href = a.getAttribute('href') || ''
-      a.setAttribute('href', 'javascript:void(0)')
-      a.setAttribute(
-        'onclick',
-        `
+
+      const isWikiInternalLink = href.startsWith('/wiki/') || href.startsWith('https://ja.wikipedia.org/wiki/')
+
+      if (isWikiInternalLink) {
+        a.setAttribute('href', 'javascript:void(0)')
+        a.setAttribute(
+          'onclick',
+          `
         console.log('📤 sending postMessage', { type: 'pm_traverse', url: '${href}' });
         window.parent.postMessage({ type: 'pm_traverse', url: '${href}' }, '*');
         return false;
       `
-      )
+        )
+      } else {
+        const p = document.createElement('p')
+        p.textContent = a.textContent || href
+        p.classList.add(...a.classList)
+        p.setAttribute('style', 'color: gray; display: inline;') // 見た目を保つなら
+        a.replaceWith(p)
+      }
+    }
+
+    const hiddenElements = [
+      '.vector-main-menu-landmark', // グローバルメニュー
+      'p.mw-jump-link', // コンテンツにスキップ
+      '.vector-page-toolbar', // ページツールバー
+      '#p-lang-btn', // 言語ボタン
+    ]
+    for (const selector of hiddenElements) {
+      const element = document.querySelector(selector)
+      if (element) element.setAttribute('style', 'display: none;')
+    }
+
+    const disabledElements = [
+      '#p-search', // サーチバー
+      '#vector-user-links-dropdown', // ユーザーリンクドロップダウン
+    ]
+    for (const selector of disabledElements) {
+      const element = document.querySelector(selector)
+      if (element) element.setAttribute('style', 'pointer-events: none; opacity: 0.5;')
     }
 
     const script = document.createElement('script')

@@ -2,5 +2,8 @@
 
 html,
 body {
-  /* @apply bg-gray-950; */
+}
+
+button {
+  cursor: pointer !important;
 }

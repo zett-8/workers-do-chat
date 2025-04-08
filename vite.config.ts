@@ -4,9 +4,13 @@ import tailwindcss from '@tailwindcss/vite'
 // import serverAdapter from 'hono-react-router-adapter/vite'
 import { defineConfig, type PluginOption } from 'vite'
 import tsconfigPaths from 'vite-tsconfig-paths'
+
 // import { getLoadContext } from './load-context'
 
 export default defineConfig((_) => ({
+  build: {
+    emptyOutDir: false,
+  },
   ssr: {
     target: 'webworker',
     resolve: {
