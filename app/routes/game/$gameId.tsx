@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useLayoutEffect } from 'react'
 import { data, Link, useParams, useSearchParams } from 'react-router'
 import { GlobalDialog, IframeDialog, GameDialog } from '@app/components/globalDialog'
 import { getWsUrl } from '@app/utils/api.client'
@@ -12,6 +12,7 @@ type PageData = { url: string; date: number }
 const PLAY_MODE = {
   vs: 'vs',
   solo: 'solo',
+  random: 'random',
 }
 
 export const loader = async ({ request }: Route.LoaderArgs) => {
@@ -30,7 +31,7 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
   const leftIframeRef = useRef<HTMLIFrameElement>(null)
   const rightIframeRef = useRef<HTMLIFrameElement>(null)
   const [_, setIsDragging] = useState(false)
-  const [leftWidth, setLeftWidth] = useState(50) // %
+  const [leftWidth, setLeftWidth] = useState(playMode === 'solo' ? 100 : 50) // %
   const [iframeVisible, setIframeVisible] = useState(true)
   const hasLoadedOnce = useRef(false)
   const socketRef = useRef<WebSocket | null>(null)
@@ -42,10 +43,9 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
 
   const [startPage, setStartPage] = useState<PageData | null>(null)
   const [goalPage, setGoalPage] = useState<PageData | null>(null)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [opponentPage, setOpponentPage] = useState<PageData | null>(null)
+  const [, setOpponentPage] = useState<PageData | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   const [popupUrl, setPopupUrl] = useState<string | null>(null)
 
   const [gameResult, setGameResult] = useState<boolean | null>(null)
@@ -173,6 +173,8 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
 
   // Scroll 監視
   useEffect(() => {
+    if (!leftIframeRef.current) return
+
     const iframe = leftIframeRef.current
     const onScroll = () => {
       try {
@@ -204,17 +206,20 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
         console.error('error cleanup', e)
       }
     }
-  }, [])
+  }, [connection])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    console.log('useLayoutEffect ----- ', hasLoadedOnce.current, leftIframeRef.current, rightIframeRef.current)
     if (!hasLoadedOnce.current && leftIframeRef.current && rightIframeRef.current) {
-      // leftIframeRef.current.src = `/api/proxy?url=${START_PAGE.url}`
-      // rightIframeRef.current.src = `/api/proxy?url=${START_PAGE.url}`
+      if (leftIframeRef.current.src || rightIframeRef.current.src) return
+
+      leftIframeRef.current.src = `/api/proxy?url=https://ja.wikipedia.org/wiki/%E3%83%A1%E3%82%A4%E3%83%B3%E3%83%9A%E3%83%BC%E3%82%B8`
+      rightIframeRef.current.src = `/api/proxy?url=https://ja.wikipedia.org/wiki/%E3%83%A1%E3%82%A4%E3%83%B3%E3%83%9A%E3%83%BC%E3%82%B8`
       hasLoadedOnce.current = true
 
       console.log('set initial src')
     }
-  }, [])
+  }, [connection, roomIsReady])
 
   const retireGame = async () => {
     if (confirm('Are you sure you want to give up?')) {
@@ -238,13 +243,13 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
 
   // ==============================================================================================================================
   // ================================================ ↓ Wainting for an opponent ↓ ================================================
-  if (!roomIsReady) {
-    return (
-      <div className="w-full h-screen flex items-center justify-center bg-black text-white">
-        <div className="text-xl font-medium animate-pulse">Waiting for an opponent...</div>
-      </div>
-    )
-  }
+  // if (!roomIsReady) {
+  //   return (
+  //     <div className="w-full h-screen flex items-center justify-center bg-black text-white">
+  //       <div className="text-xl font-medium animate-pulse">Waiting for an opponent...</div>
+  //     </div>
+  //   )
+  // }
   // ================================================ ↑ Wainting for an opponent ↑ ================================================
 
   return (
@@ -262,7 +267,7 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
                   <button className="hover:underline" onClick={() => setPopupUrl(startPage.url)}>
                     🚩{decodeURIComponent(startPage.url.split('/wiki/')[1]).replaceAll('_', ' ')}
                   </button>{' '}
-                  → → →{' '}
+                  <span className="text-gray-400 text-sm">→ → →</span>{' '}
                   <button className="hover:underline" onClick={() => setPopupUrl(goalPage.url)}>
                     {decodeURIComponent(goalPage.url.split('/wiki/')[1]).replaceAll('_', ' ')} 🏁
                   </button>
@@ -279,15 +284,17 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
             )}
           </div>
           <div>
-            <button
-              className="bg-white text-black px-4 py-2 rounded-md hover:bg-gray-200 transition mr-2"
-              onClick={() => {
-                setLeftWidth(showOpponentPanel ? 100 : 50)
-                setShowOpponentPanel(!showOpponentPanel)
-              }}
-            >
-              {showOpponentPanel ? '📺' : '📺✂️📺'}
-            </button>
+            {playMode !== 'solo' && (
+              <button
+                className="bg-white text-black px-4 py-2 rounded-md hover:bg-gray-200 transition mr-2"
+                onClick={() => {
+                  setLeftWidth(showOpponentPanel ? 100 : 50)
+                  setShowOpponentPanel(!showOpponentPanel)
+                }}
+              >
+                {showOpponentPanel ? '📺' : '📺✂️📺'}
+              </button>
+            )}
             {onGame ? (
               <button
                 className="bg-white text-black px-4 py-2 rounded-md hover:bg-gray-200 transition"
@@ -309,7 +316,6 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
         <div ref={containerRef} className="flex-1 flex relative select-none overflow-hidden">
           <div ref={leftRef} className="h-full relative" style={{ width: `${leftWidth}%` }}>
             <iframe
-              // sandbox="allow-scripts allow-same-origin"
               ref={leftIframeRef}
               className="w-full h-full border-none"
               title="You"
@@ -318,15 +324,17 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
             {!iframeVisible && <div className="absolute inset-0 bg-gray-100 pointer-events-none" />}
           </div>
 
-          <div
-            role="slider"
-            aria-valuenow={0}
-            tabIndex={0}
-            onKeyDown={() => null}
-            onMouseDown={handleMouseDown}
-            className={`w-1.5 cursor-col-resize bg-gray-300 hover:bg-gray-500 z-10 ${showOpponentPanel ? 'block' : 'hidden'}`}
-            aria-orientation="vertical"
-          />
+          {showOpponentPanel && playMode !== 'solo' && (
+            <div
+              role="slider"
+              aria-valuenow={0}
+              tabIndex={0}
+              onKeyDown={() => null}
+              onMouseDown={handleMouseDown}
+              className={`w-1.5 cursor-col-resize bg-gray-300 hover:bg-gray-500 z-10 ${showOpponentPanel ? 'block' : 'hidden'}`}
+              aria-orientation="vertical"
+            />
+          )}
 
           <div
             ref={rightRef}
@@ -334,10 +342,10 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
             style={{ width: `${100 - leftWidth}%` }}
           >
             <iframe
-              // sandbox="allow-scripts allow-same-origin"
               ref={rightIframeRef}
               className="w-full h-full border-none pointer-events-none"
               title="Opponent"
+              scrolling="no"
               style={{ visibility: iframeVisible ? 'visible' : 'hidden' }}
             />
             {!iframeVisible && <div className="absolute inset-0 bg-gray-100 pointer-events-none" />}

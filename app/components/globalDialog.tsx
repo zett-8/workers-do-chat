@@ -14,6 +14,7 @@ export function GlobalDialog({ isOpen, closeDialog, children, socketRef, userId,
   const [goalPageTitle, setGoalPageTitle] = useState('')
   const [startPageTitleError, setStartPageTitleError] = useState<string | null>(null)
   const [goalPageTitleError, setGoalPageTitleError] = useState<string | null>(null)
+  const [fetching, setFetching] = useState(false)
 
   const getRandomPage = async () => {
     const res = await fetch('/api/random')
@@ -24,11 +25,13 @@ export function GlobalDialog({ isOpen, closeDialog, children, socketRef, userId,
   }
 
   const randomStart = async () => {
+    setFetching(true)
     const data = await getRandomPage()
     setStartPageTitle(data[0].title)
   }
 
   const randomGoal = async () => {
+    setFetching(true)
     const data = await getRandomPage()
     setGoalPageTitle(data[1].title)
   }
@@ -60,10 +63,12 @@ export function GlobalDialog({ isOpen, closeDialog, children, socketRef, userId,
     if (!startPageTitle) return
     const controller = new AbortController()
     const timer = setTimeout(async () => {
+      setFetching(true)
       const result = await checkPageExists(startPageTitle, controller.signal)
       if (!result) setStartPageTitleError('存在しないページです')
       else setStartPageTitleError(null)
-    }, 300)
+      setFetching(false)
+    }, 100)
     return () => {
       controller.abort()
       clearTimeout(timer)
@@ -74,10 +79,12 @@ export function GlobalDialog({ isOpen, closeDialog, children, socketRef, userId,
     if (!goalPageTitle) return
     const controller = new AbortController()
     const timer = setTimeout(async () => {
+      setFetching(true)
       const result = await checkPageExists(goalPageTitle, controller.signal)
       if (!result) setGoalPageTitleError('存在しないページです')
       else setGoalPageTitleError(null)
-    }, 300)
+      setFetching(false)
+    }, 100)
     return () => {
       controller.abort()
       clearTimeout(timer)
@@ -98,19 +105,22 @@ export function GlobalDialog({ isOpen, closeDialog, children, socketRef, userId,
           aria-label="Close dialog"
         />
 
-        <div className="relative transform overflow-hidden rounded-lg bg-white p-6 shadow-xl transition-all w-full max-w-md">
+        <div className="relative transform overflow-hidden rounded-lg bg-white p-12 shadow-xl transition-all w-full max-w-md">
           <div className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="w-20 text-sm font-medium">Start:</span>
+            <div className="space-y-4">
+              <div className="flex items-center">
+                <span className="w-18 text-md font-medium mr-1">Start 🚩 :</span>
                 <div className="flex-1 flex items-center gap-2">
                   <div className="flex-1">
                     <input
                       type="text"
                       placeholder="Enter start page"
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2B7A78]"
                       value={startPageTitle}
-                      onChange={(e) => setStartPageTitle(e.currentTarget.value)}
+                      onChange={(e) => {
+                        setFetching(true)
+                        setStartPageTitle(e.currentTarget.value)
+                      }}
                     />
                     {startPageTitleError && <div className="text-red-500 text-xs mt-1">{startPageTitleError}</div>}
                   </div>
@@ -123,16 +133,19 @@ export function GlobalDialog({ isOpen, closeDialog, children, socketRef, userId,
                   </button>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="w-20 text-sm font-medium">Goal:</span>
+              <div className="flex items-center">
+                <span className="w-18 text-md font-medium mr-1">Goal 🏁 :</span>
                 <div className="flex-1 flex items-center gap-2">
                   <div className="flex-1">
                     <input
                       type="text"
                       placeholder="Enter goal page"
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2B7A78]"
                       value={goalPageTitle}
-                      onChange={(e) => setGoalPageTitle(e.currentTarget.value)}
+                      onChange={(e) => {
+                        setFetching(true)
+                        setGoalPageTitle(e.currentTarget.value)
+                      }}
                     />
                     {goalPageTitleError && <div className="text-red-500 text-xs mt-1">{goalPageTitleError}</div>}
                   </div>
@@ -148,9 +161,11 @@ export function GlobalDialog({ isOpen, closeDialog, children, socketRef, userId,
               <div className="pt-2">
                 <button
                   type="button"
-                  className="w-full px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg transition-all disabled:bg-gray-300 disabled:from-gray-300 disabled:to-gray-400 disabled:text-gray-500 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-2 text-sm font-medium text-white bg-[#3AAFA9] hover:bg-[#2B7A78] rounded-lg transition-all disabled:bg-gray-300 disabled:from-gray-300 disabled:to-gray-400 disabled:text-gray-500 disabled:cursor-not-allowed"
                   onClick={startGame}
-                  disabled={!!startPageTitleError || !!goalPageTitleError || !startPageTitle || !goalPageTitle}
+                  disabled={
+                    !!startPageTitleError || !!goalPageTitleError || !startPageTitle || !goalPageTitle || fetching
+                  }
                 >
                   START!
                 </button>

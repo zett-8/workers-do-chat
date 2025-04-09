@@ -20,6 +20,18 @@ app.get('/api/random', async (c) => {
   return c.json([page1, page2])
 })
 
+// app.get('/test', async (c) => {
+//   const res = await fetch('https://ja.wikipedia.org/wiki/%E7%AB%8B%E3%81%A1%E3%82%93%E3%81%BC', {})
+//   const html = await res.text()
+
+//   const match = html.match(/<link rel="canonical" href="([^"]+)"\/?>/)
+//   const canonicalUrl = match?.[1]
+
+//   console.log('canonical URL:', canonicalUrl)
+
+//   return c.text(canonicalUrl || '')
+// })
+
 app.get('/api/page/check/:pageTitle', async (c) => {
   try {
     const pageTitle = c.req.param('pageTitle')
@@ -44,6 +56,7 @@ app.get('/api/proxy', async (c) => {
 
   try {
     const res = await fetch(url)
+    console.log('res', res.url)
     const html = await res.text()
     const { document } = parseHTML(html)
 

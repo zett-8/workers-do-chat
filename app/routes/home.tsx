@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { data } from 'react-router'
 import type { Route } from './+types/home'
 
@@ -13,6 +13,8 @@ export const loader = async (_: Route.LoaderArgs) => {
 }
 
 export default function Home(_: Route.ComponentProps) {
+  const [roomId, setRoomId] = useState('')
+
   return (
     <main className="flex h-dvh items-center justify-center">
       {/* BG */}
@@ -25,21 +27,37 @@ export default function Home(_: Route.ComponentProps) {
       {/* BG */}
 
       <div className="grid gap-8 text-center">
-        <h1 className="text-6xl font-black text-gray-700">Wikitraverze</h1>
+        <h1 className="text-6xl font-black text-[#17252A]">Wikitraverze</h1>
         <p className="text-lg text-gray-500">Choose a game</p>
 
         <div className="grid grid-cols-2 gap-4 w-full max-w-md mx-auto">
           <a
-            href="/chat/one"
-            className="px-6 py-3 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors duration-200"
+            href={`/game/${Math.random().toString(36).substring(2, 15)}?playMode=solo`}
+            className="px-6 py-3 bg-[#3AAFA9] text-white font-medium rounded-lg hover:bg-[#2B7A78] transition-colors duration-200"
           >
             Play Solo
           </a>
           <a
             href="/chat/two"
-            className="px-6 py-3 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors duration-200"
+            className="px-6 py-3 bg-[#3AAFA9] text-white font-medium rounded-lg hover:bg-[#2B7A78] transition-colors duration-200"
           >
-            Play Online
+            Random Match
+          </a>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 w-full max-w-md mx-auto">
+          <input
+            type="text"
+            placeholder="Enter Room ID"
+            className="px-6 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2B7A78]"
+            value={roomId}
+            onChange={(e) => setRoomId(e.target.value)}
+          />
+          <a
+            href={`/game/${roomId}?playMode=vs`}
+            className="px-6 py-3 bg-[#3AAFA9] text-white font-medium rounded-lg hover:bg-[#2B7A78] transition-colors duration-200"
+          >
+            Start with Room ID
           </a>
         </div>
       </div>

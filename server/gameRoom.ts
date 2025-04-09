@@ -1,6 +1,18 @@
+export type ProtocolType =
+  | 'scrolled'
+  | 'traversed'
+  | 'action'
+  | 'startUrl'
+  | 'goalUrl'
+  | 'winner'
+  | 'command'
+  | 'wantToStartGame'
+  | 'status'
+  | 'hello'
+
 export type Protocol =
   | {
-      type: 'scrolled' | 'traversed' | 'action' | 'startUrl' | 'goalUrl' | 'winner' | 'command'
+      type: 'traversed' | 'action' | 'startUrl' | 'goalUrl' | 'winner' | 'command'
       player: string
       data: string
       date: number
@@ -14,8 +26,9 @@ export type Protocol =
       }
       date: number
     }
-  | { type: 'hello'; player: string; data: { playMode: 'vs' | 'solo' }; date: number }
+  | { type: 'hello'; player: string; data: { playMode: 'vs' | 'solo' | 'random' }; date: number }
   | { type: 'status'; player: 'system'; data: 'roomIsReady'; date: number }
+  | { type: 'scrolled'; player: string; data: string; date: number }
 
 type GameHistory = {
   type: 'traversed' | 'action' | 'startUrl' | 'goalUrl' | 'winner' | 'command'
