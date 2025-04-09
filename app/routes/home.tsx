@@ -1,4 +1,7 @@
+import { lazy, Suspense } from 'react'
 import { data } from 'react-router'
+// import ParticlesClient from '@app/components/particles.client'
+// import { ParticlesClient } from '@app/components/particles.client'
 import type { Route } from './+types/home'
 
 export function meta(_: Route.MetaArgs) {
@@ -9,13 +12,19 @@ export const loader = async (_: Route.LoaderArgs) => {
   return data({})
 }
 
+const ParticlesClient = lazy(() => import('@app/components/particles.client'))
+
 export default function Home(_: Route.ComponentProps) {
   return (
     <main className="flex h-dvh items-center justify-center">
+      <div id="tsparticles"></div>
+      <Suspense fallback={<div>Loading...</div>}>
+        <ParticlesClient />
+      </Suspense>
       <div className="grid gap-8 text-center">
-        <h1 className="text-6xl font-black text-gray-100">Workers D.O. Chat</h1>
+        <h1 className="text-6xl font-black text-gray-100">Wikitraverze</h1>
         <p className="text-xl text-gray-500">Choose a chat room</p>
-        
+
         <div className="grid grid-cols-2 gap-4 w-full max-w-md mx-auto">
           <a
             href="/chat/one"
