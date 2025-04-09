@@ -12,7 +12,7 @@ export type ProtocolType =
 
 export type Protocol =
   | {
-      type: 'traversed' | 'action' | 'startUrl' | 'goalUrl' | 'winner' | 'command'
+      type: 'scrolled' | 'traversed' | 'action' | 'startUrl' | 'goalUrl' | 'winner' | 'command'
       player: string
       data: string
       date: number
@@ -28,7 +28,6 @@ export type Protocol =
     }
   | { type: 'hello'; player: string; data: { playMode: 'vs' | 'solo' | 'random' }; date: number }
   | { type: 'status'; player: 'system'; data: 'roomIsReady'; date: number }
-  | { type: 'scrolled'; player: string; data: string; date: number }
 
 type GameHistory = {
   type: 'traversed' | 'action' | 'startUrl' | 'goalUrl' | 'winner' | 'command'

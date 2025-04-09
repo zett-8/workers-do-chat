@@ -1,11 +1,12 @@
 import type React from 'react'
 import type { Protocol } from '~/server/gameRoom'
 
-type PageSetter = React.Dispatch<React.SetStateAction<{ url: string; date: number }>>
+type PageSetter = React.Dispatch<React.SetStateAction<{ url: string; date: number } | null>>
 
 export class ProtocolHandler {
   constructor(
     private readonly userId: string,
+    private readonly ws: React.RefObject<WebSocket | null>,
     private readonly funcs: {
       setOnGame: (onGame: boolean) => void
       setGameResult: (result: boolean) => void
@@ -15,12 +16,20 @@ export class ProtocolHandler {
       setOpponentPage: PageSetter
     },
     private readonly refs: {
-      leftIframeRef: React.RefObject<HTMLIFrameElement>
-      rightIframeRef: React.RefObject<HTMLIFrameElement>
+      leftIframeRef: React.RefObject<HTMLIFrameElement | null>
+      rightIframeRef: React.RefObject<HTMLIFrameElement | null>
     }
   ) {}
 
+  sayHello(playMode: 'vs' | 'solo' | 'random') {
+    this.ws.current?.send(
+      JSON.stringify({ type: 'hello', player: this.userId, data: { playMode }, date: Date.now() })
+    )
+  }
+
   handle(protocol: Protocol) {
+    console.log('@PH -- handling:', protocol)
+
     switch (protocol.type) {
       case 'winner': {
         this.funcs.setOnGame(false)
@@ -50,7 +59,7 @@ export class ProtocolHandler {
 
       case 'startUrl': {
         this.funcs.setStartPage((pre) => {
-          if (pre.date < protocol.date) {
+          if (!pre || pre.date < protocol.date) {
             return { url: protocol.data, date: protocol.date }
           }
           return pre
@@ -61,7 +70,7 @@ export class ProtocolHandler {
 
       case 'goalUrl': {
         this.funcs.setGoalPage((pre) => {
-          if (pre.date < protocol.date) {
+          if (!pre || pre.date < protocol.date) {
             return { url: protocol.data, date: protocol.date }
           }
           return pre

@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useLayoutEffect } from 'react'
 import { data, Link, useParams, useSearchParams } from 'react-router'
 import { GlobalDialog, IframeDialog, GameDialog } from '@app/components/globalDialog'
 import { getWsUrl } from '@app/utils/api.client'
+import { ProtocolHandler } from '@app/utils/protocolHandlers'
 import { createResizeHandler } from '@app/utils/resizeUtils'
 import { getOrCreateUserId } from '@app/utils/userId.server'
 import type { Protocol } from '../../../server/gameRoom'
@@ -24,7 +25,8 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
   const { userId, wikiOrigin } = loaderData
   const { gameId } = useParams()
   const [searchParams] = useSearchParams()
-  const playMode = PLAY_MODE[searchParams.get('playMode') as keyof typeof PLAY_MODE] || 'vs'
+  // @ts-expect-error index typere
+  const playMode = (PLAY_MODE[searchParams.get('playMode')] || 'vs') as keyof typeof PLAY_MODE
   const containerRef = useRef<HTMLDivElement>(null)
   const leftRef = useRef<HTMLDivElement>(null)
   const rightRef = useRef<HTMLDivElement>(null)
@@ -56,6 +58,23 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
     onGameRef.current = onGame
   }, [onGame])
 
+  const protocolHandler = new ProtocolHandler(
+    userId,
+    socketRef,
+    {
+      setOnGame,
+      setGameResult,
+      setRoomIsReady,
+      setStartPage,
+      setGoalPage,
+      setOpponentPage,
+    },
+    {
+      leftIframeRef,
+      rightIframeRef,
+    }
+  )
+
   const handleMouseDown = createResizeHandler({
     containerRef,
     currentWidth: leftWidth,
@@ -64,16 +83,14 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
     setIframeVisible,
   })
 
-  // WS
+  // WebSocket
   useEffect(() => {
     const ws = new WebSocket(getWsUrl() + `/${gameId}`)
 
     socketRef.current = ws
 
     ws.onopen = () => {
-      socketRef.current?.send(
-        JSON.stringify({ type: 'hello', player: userId, data: { playMode: playMode }, date: Date.now() })
-      )
+      protocolHandler.sayHello(playMode)
       console.log('WebSocket opened')
       setConnection('connected')
     }
@@ -84,69 +101,16 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
     }
 
     ws.onmessage = (event) => {
-      const ping = JSON.parse(event.data) as Protocol
-      console.log('-onmessage', ping)
-      const { type, player, data } = ping
-
-      if (type === 'winner') {
-        setOnGame(false)
-        if (Date.now() - ping.date > 3000) return
-
-        if (player === userId) {
-          setGameResult(true)
-        } else {
-          setGameResult(false)
-        }
-      }
-
-      if (type === 'status' && data === 'roomIsReady') {
-        setRoomIsReady(true)
-      }
-
-      if (type === 'command' && data === 'startGame') {
-        setOnGame(true)
-      }
-
-      if (type === 'startUrl') {
-        if (!startPage || startPage.date < ping.date) setStartPage({ url: ping.data, date: ping.date })
-      }
-
-      if (type === 'goalUrl') {
-        if (!goalPage || goalPage.date < ping.date) setGoalPage({ url: ping.data, date: ping.date })
-      }
-
-      if (type === 'traversed') {
-        if (!rightIframeRef.current || !leftIframeRef.current) return
-
-        if (player === 'system') {
-          leftIframeRef.current.src = `/api/proxy?url=${data}`
-          rightIframeRef.current.src = `/api/proxy?url=${data}`
-        } else if (player === userId) {
-          leftIframeRef.current.src = `/api/proxy?url=${data}`
-        } else {
-          rightIframeRef.current.src = `/api/proxy?url=${data}`
-          setOpponentPage({ url: data, date: ping.date })
-        }
-      }
-
-      if (type === 'scrolled') {
-        if (!rightIframeRef.current || player === userId) return
-
-        const ratio = parseFloat(ping.data)
-        if (!isNaN(ratio) && rightIframeRef.current?.contentWindow?.document?.documentElement) {
-          const el = rightIframeRef.current.contentWindow.document.documentElement
-          const y = el.scrollHeight * ratio
-          rightIframeRef.current.contentWindow.scrollTo({ top: y, behavior: 'smooth' })
-        }
-      }
+      protocolHandler.handle(JSON.parse(event.data) as Protocol)
     }
 
     ws.onclose = () => {
       console.log('WebSocket closed')
       setConnection('disconnected')
     }
+
     return () => ws.close()
-  }, [gameId, userId])
+  }, [gameId, userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Detect page change
   useEffect(() => {
@@ -222,7 +186,7 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
   }, [connection, roomIsReady])
 
   const retireGame = async () => {
-    if (confirm('Are you sure you want to give up?')) {
+    if (confirm('ギブアップしますか?')) {
       socketRef.current?.send(JSON.stringify({ type: 'action', player: userId, data: 'retireGame', date: Date.now() }))
     }
   }
