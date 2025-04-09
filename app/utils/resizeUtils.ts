@@ -5,18 +5,15 @@ export const createResizeHandler = ({
   currentWidth,
   setWidth,
   setIsDragging,
-  setIframeVisible
 }: {
   containerRef: RefObject<HTMLElement | null>
   currentWidth: number
   setWidth: (width: number) => void
   setIsDragging: (dragging: boolean) => void
-  setIframeVisible: (visible: boolean) => void
 }) => {
   return (e: React.MouseEvent) => {
     e.preventDefault()
     setIsDragging(true)
-    setIframeVisible(false)
 
     const container = containerRef.current
     if (!container) return
@@ -39,7 +36,6 @@ export const createResizeHandler = ({
 
     const handleMouseUp = () => {
       setIsDragging(false)
-      setIframeVisible(true)
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
     }

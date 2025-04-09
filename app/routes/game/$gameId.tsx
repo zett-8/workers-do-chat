@@ -36,7 +36,6 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
   const rightIframeRef = useRef<HTMLIFrameElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [leftWidth, setLeftWidth] = useState(playMode === 'solo' ? 100 : 50) // %
-  const [iframeVisible, setIframeVisible] = useState(true)
   const hasLoadedOnce = useRef(false)
   const socketRef = useRef<WebSocket | null>(null)
   const lastScrollSent = useRef(0)
@@ -78,7 +77,6 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
     currentWidth: leftWidth,
     setWidth: setLeftWidth,
     setIsDragging,
-    setIframeVisible,
   })
 
   // WebSocket
@@ -166,16 +164,14 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
     }
   }, [connection])
 
+  // 初回読み込み
   useLayoutEffect(() => {
-    console.log('useLayoutEffect ----- ', hasLoadedOnce.current, leftIframeRef.current, rightIframeRef.current)
     if (!hasLoadedOnce.current && leftIframeRef.current && rightIframeRef.current) {
       if (leftIframeRef.current.src || rightIframeRef.current.src) return
 
       leftIframeRef.current.src = `/api/proxy?url=https://ja.wikipedia.org/wiki/%E3%83%A1%E3%82%A4%E3%83%B3%E3%83%9A%E3%83%BC%E3%82%B8`
       rightIframeRef.current.src = `/api/proxy?url=https://ja.wikipedia.org/wiki/%E3%83%A1%E3%82%A4%E3%83%B3%E3%83%9A%E3%83%BC%E3%82%B8`
       hasLoadedOnce.current = true
-
-      console.log('set initial src')
     }
   }, [connection, roomIsReady])
 
@@ -247,9 +243,9 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
               ref={leftIframeRef}
               className="w-full h-full border-none"
               title="You"
-              style={{ visibility: iframeVisible ? 'visible' : 'hidden' }}
+              style={{ visibility: isDragging ? 'hidden' : 'visible' }}
             />
-            {!iframeVisible && <div className="absolute inset-0 bg-gray-100 pointer-events-none" />}
+            {isDragging && <div className="absolute inset-0 bg-gray-100 pointer-events-none" />}
           </div>
 
           {/* prettier-ignore */}
@@ -265,9 +261,9 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
               className="w-full h-full border-none pointer-events-none"
               title="Opponent"
               scrolling="no"
-              style={{ visibility: iframeVisible ? 'visible' : 'hidden' }}
+              style={{ visibility: isDragging ? 'hidden' : 'visible' }}
             />
-            {!iframeVisible && <div className="absolute inset-0 bg-gray-100 pointer-events-none" />}
+            {isDragging && <div className="absolute inset-0 bg-gray-100 pointer-events-none" />}
           </div>
         </div>
       </div>
