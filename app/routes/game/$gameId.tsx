@@ -1,6 +1,8 @@
 import { useRef, useState, useEffect, useLayoutEffect } from 'react'
 import { data, Link, useParams, useSearchParams } from 'react-router'
+import { GamePanelButton } from '@app/components/buttons'
 import { GlobalDialog, IframeDialog, GameDialog } from '@app/components/globalDialog'
+import { Slider } from '@app/components/slider'
 import { getWsUrl } from '@app/utils/api.client'
 import { ProtocolHandler } from '@app/utils/protocolHandlers'
 import { createResizeHandler } from '@app/utils/resizeUtils'
@@ -32,24 +34,20 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
   const rightRef = useRef<HTMLDivElement>(null)
   const leftIframeRef = useRef<HTMLIFrameElement>(null)
   const rightIframeRef = useRef<HTMLIFrameElement>(null)
-  const [_, setIsDragging] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
   const [leftWidth, setLeftWidth] = useState(playMode === 'solo' ? 100 : 50) // %
   const [iframeVisible, setIframeVisible] = useState(true)
   const hasLoadedOnce = useRef(false)
   const socketRef = useRef<WebSocket | null>(null)
   const lastScrollSent = useRef(0)
   const [showOpponentPanel, setShowOpponentPanel] = useState(true)
-
   const [connection, setConnection] = useState<'loading' | 'error' | 'connected' | 'disconnected'>('loading')
   const [roomIsReady, setRoomIsReady] = useState(false)
-
   const [startPage, setStartPage] = useState<PageData | null>(null)
   const [goalPage, setGoalPage] = useState<PageData | null>(null)
   const [, setOpponentPage] = useState<PageData | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-
   const [popupUrl, setPopupUrl] = useState<string | null>(null)
-
   const [gameResult, setGameResult] = useState<boolean | null>(null)
 
   const [onGame, setOnGame] = useState(false)
@@ -118,8 +116,6 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
       const { type, url } = event.data || {}
 
       if (type === 'pm_traverse' && typeof url === 'string') {
-        // const msg: Ping = { type: 'traverse', player: 'player1', data: url }
-        // socketRef.current?.send(JSON.stringify(msg))
         if (!onGameRef.current) return
 
         if (leftIframeRef.current) {
@@ -130,9 +126,7 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
     }
 
     window.addEventListener('message', handleMessage)
-    return () => {
-      window.removeEventListener('message', handleMessage)
-    }
+    return () => window.removeEventListener('message', handleMessage)
   }, [])
 
   // Scroll 監視
@@ -203,18 +197,6 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
       </div>
     )
   }
-  // ================================================ ↑ Waiting for WS connection ↑ ===============================================
-
-  // ==============================================================================================================================
-  // ================================================ ↓ Wainting for an opponent ↓ ================================================
-  // if (!roomIsReady) {
-  //   return (
-  //     <div className="w-full h-screen flex items-center justify-center bg-black text-white">
-  //       <div className="text-xl font-medium animate-pulse">Waiting for an opponent...</div>
-  //     </div>
-  //   )
-  // }
-  // ================================================ ↑ Wainting for an opponent ↑ ================================================
 
   return (
     <>
@@ -236,43 +218,25 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
                     {decodeURIComponent(goalPage.url.split('/wiki/')[1]).replaceAll('_', ' ')} 🏁
                   </button>
                 </span>
-                {/* {opponentPage?.url && (
-                  <span>
-                    Opponent:{' '}
-                    <button className="hover:underline" onClick={() => setPopupUrl(opponentPage.url)}>
-                      {decodeURIComponent(opponentPage.url.split('/wiki/')[1]).replaceAll('_', ' ')}
-                    </button>
-                  </span>
-                )} */}
               </>
             )}
           </div>
           <div>
             {playMode !== 'solo' && (
-              <button
-                className="bg-white text-black px-4 py-2 rounded-md hover:bg-gray-200 transition mr-2"
+              <GamePanelButton
+                cn="mr-2"
                 onClick={() => {
                   setLeftWidth(showOpponentPanel ? 100 : 50)
                   setShowOpponentPanel(!showOpponentPanel)
                 }}
               >
                 {showOpponentPanel ? '📺' : '📺✂️📺'}
-              </button>
+              </GamePanelButton>
             )}
             {onGame ? (
-              <button
-                className="bg-white text-black px-4 py-2 rounded-md hover:bg-gray-200 transition"
-                onClick={retireGame}
-              >
-                GIVE UP💀
-              </button>
+              <GamePanelButton onClick={retireGame}>GIVE UP💀</GamePanelButton>
             ) : (
-              <button
-                className="bg-white text-black px-4 py-2 rounded-md hover:bg-gray-200 transition"
-                onClick={() => setIsDialogOpen(true)}
-              >
-                New Game🎓
-              </button>
+              <GamePanelButton onClick={() => setIsDialogOpen(true)}>New Game🎓</GamePanelButton>
             )}
           </div>
         </header>
@@ -288,17 +252,8 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
             {!iframeVisible && <div className="absolute inset-0 bg-gray-100 pointer-events-none" />}
           </div>
 
-          {showOpponentPanel && playMode !== 'solo' && (
-            <div
-              role="slider"
-              aria-valuenow={0}
-              tabIndex={0}
-              onKeyDown={() => null}
-              onMouseDown={handleMouseDown}
-              className={`w-1.5 cursor-col-resize bg-gray-300 hover:bg-gray-500 z-10 ${showOpponentPanel ? 'block' : 'hidden'}`}
-              aria-orientation="vertical"
-            />
-          )}
+          {/* prettier-ignore */}
+          <Slider showOpponentPanel={showOpponentPanel} playMode={playMode} isDragging={isDragging} handleMouseDown={handleMouseDown} />
 
           <div
             ref={rightRef}
