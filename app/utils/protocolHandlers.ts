@@ -27,6 +27,18 @@ export class ProtocolHandler {
     )
   }
 
+  sendScroll(ratio: number) {
+    this.ws.current?.send(JSON.stringify({ type: 'scrolled', player: this.userId, data: ratio.toString(), date: Date.now() }))
+  }
+
+  sendGiveUp() {
+    this.ws.current?.send(JSON.stringify({ type: 'action', player: this.userId, data: 'retireGame', date: Date.now() }))
+  }
+
+  sendTraverse(url: string) {
+    this.ws.current?.send(JSON.stringify({ type: 'traversed', player: this.userId, data: url, date: Date.now() }))
+  }
+
   handle(protocol: Protocol) {
     console.log('@PH -- handling:', protocol)
 

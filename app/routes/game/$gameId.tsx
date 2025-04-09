@@ -6,6 +6,7 @@ import { Slider } from '@app/components/slider'
 import { getWsUrl } from '@app/utils/api.client'
 import { ProtocolHandler } from '@app/utils/protocolHandlers'
 import { createResizeHandler } from '@app/utils/resizeUtils'
+import { useScrollEffect } from '@app/utils/scrollObserver'
 import { getOrCreateUserId } from '@app/utils/userId.server'
 import type { Protocol } from '../../../server/gameRoom'
 import type { Route } from './+types/$gameId'
@@ -38,7 +39,6 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
   const [leftWidth, setLeftWidth] = useState(playMode === 'solo' ? 100 : 50) // %
   const hasLoadedOnce = useRef(false)
   const socketRef = useRef<WebSocket | null>(null)
-  const lastScrollSent = useRef(0)
   const [showOpponentPanel, setShowOpponentPanel] = useState(true)
   const [connection, setConnection] = useState<'loading' | 'error' | 'connected' | 'disconnected'>('loading')
   const [roomIsReady, setRoomIsReady] = useState(false)
@@ -55,55 +55,26 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
     onGameRef.current = onGame
   }, [onGame])
 
-  const protocolHandler = new ProtocolHandler(
-    userId,
-    socketRef,
-    {
-      setOnGame,
-      setGameResult,
-      setRoomIsReady,
-      setStartPage,
-      setGoalPage,
-      setOpponentPage,
-    },
-    {
-      leftIframeRef,
-      rightIframeRef,
-    }
-  )
-
-  const handleMouseDown = createResizeHandler({
-    containerRef,
-    currentWidth: leftWidth,
-    setWidth: setLeftWidth,
-    setIsDragging,
-  })
+  // prettier-ignore
+  const protocolHandler = new ProtocolHandler(userId, socketRef, { setOnGame, setGameResult, setRoomIsReady, setStartPage, setGoalPage, setOpponentPage }, { leftIframeRef, rightIframeRef })
+  // prettier-ignore
+  const handleMouseDown = createResizeHandler({ containerRef, currentWidth: leftWidth, setWidth: setLeftWidth, setIsDragging })
 
   // WebSocket
   useEffect(() => {
     const ws = new WebSocket(getWsUrl() + `/${gameId}`)
-
     socketRef.current = ws
 
     ws.onopen = () => {
       protocolHandler.sayHello(playMode)
-      console.log('WebSocket opened')
       setConnection('connected')
     }
-
     ws.onerror = (event) => {
       console.error('WebSocket error', event)
       setConnection('error')
     }
-
-    ws.onmessage = (event) => {
-      protocolHandler.handle(JSON.parse(event.data) as Protocol)
-    }
-
-    ws.onclose = () => {
-      console.log('WebSocket closed')
-      setConnection('disconnected')
-    }
+    ws.onmessage = (event) => protocolHandler.handle(JSON.parse(event.data) as Protocol)
+    ws.onclose = () => setConnection('disconnected')
 
     return () => ws.close()
   }, [gameId, userId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -118,67 +89,31 @@ const GamePage = ({ loaderData }: Route.ComponentProps) => {
 
         if (leftIframeRef.current) {
           leftIframeRef.current.src = `/api/proxy?url=${wikiOrigin + url}`
-          socketRef.current?.send(JSON.stringify({ type: 'traversed', player: userId, data: wikiOrigin + url }))
+          protocolHandler.sendTraverse(wikiOrigin + url)
         }
       }
     }
 
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [])
+  }, [connection]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Scroll 監視
-  useEffect(() => {
-    if (!leftIframeRef.current) return
-
-    const iframe = leftIframeRef.current
-    const onScroll = () => {
-      try {
-        const now = Date.now()
-        if (now - lastScrollSent.current < 100) return
-        lastScrollSent.current = now
-
-        const el = iframe?.contentDocument?.documentElement
-        if (!el) return
-        const ratio = el.scrollTop / el.scrollHeight
-        socketRef.current?.send(JSON.stringify({ type: 'scrolled', player: userId, data: ratio.toString() }))
-      } catch (e) {
-        console.error('error onScroll', e)
-      }
-    }
-    const setup = () => {
-      try {
-        iframe?.contentWindow?.addEventListener('scroll', onScroll)
-      } catch (e) {
-        console.error('error setup', e)
-      }
-    }
-    const interval = setInterval(setup, 1000) // 遅延読み込みに対応
-    return () => {
-      clearInterval(interval)
-      try {
-        iframe?.contentWindow?.removeEventListener('scroll', onScroll)
-      } catch (e) {
-        console.error('error cleanup', e)
-      }
-    }
-  }, [connection])
+  useScrollEffect({ iframeRef: leftIframeRef, protocolHandler, deps: [connection] })
 
   // 初回読み込み
   useLayoutEffect(() => {
     if (!hasLoadedOnce.current && leftIframeRef.current && rightIframeRef.current) {
       if (leftIframeRef.current.src || rightIframeRef.current.src) return
-
-      leftIframeRef.current.src = `/api/proxy?url=https://ja.wikipedia.org/wiki/%E3%83%A1%E3%82%A4%E3%83%B3%E3%83%9A%E3%83%BC%E3%82%B8`
-      rightIframeRef.current.src = `/api/proxy?url=https://ja.wikipedia.org/wiki/%E3%83%A1%E3%82%A4%E3%83%B3%E3%83%9A%E3%83%BC%E3%82%B8`
+      const defaultPage = `/api/proxy?url=https://ja.wikipedia.org/wiki/%E3%83%A1%E3%82%A4%E3%83%B3%E3%83%9A%E3%83%BC%E3%82%B8`
+      leftIframeRef.current.src = defaultPage
+      rightIframeRef.current.src = defaultPage
       hasLoadedOnce.current = true
     }
   }, [connection, roomIsReady])
 
-  const retireGame = async () => {
-    if (confirm('ギブアップしますか?')) {
-      socketRef.current?.send(JSON.stringify({ type: 'action', player: userId, data: 'retireGame', date: Date.now() }))
-    }
+  const retireGame = () => {
+    if (confirm('ギブアップしますか?')) protocolHandler.sendGiveUp()
   }
 
   // =============================================================================================================================
